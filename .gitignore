@@ -1,0 +1,8 @@
+retroarch/
+*.AppImage
+*.deb
+*.7z
+*.tar.xz
+test_game/
+*.o
+onscripter_libretro.so
