@@ -20,6 +20,7 @@
     slouken@libsdl.org
 */
 #include "SDL_config.h"
+#include <stdbool.h>
 
 #include "SDL_timer.h"
 #include "SDL_timer_c.h"
