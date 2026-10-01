@@ -201,15 +201,14 @@ SDL_TimerID SDL_AddTimer(Uint32 interval, SDL_NewTimerCallback callback, void *p
 #endif
 	SDL_TimerID t;
 	if ( ! SDL_timer_mutex ) {
+		SDL_timer_mutex = SDL_CreateMutex();
+	}
+	if ( ! SDL_timer_mutex ) {
 		if ( SDL_timer_started ) {
 			SDL_SetError("This platform doesn't support multiple timers");
 		} else {
 			SDL_SetError("You must call SDL_Init(SDL_INIT_TIMER) first");
 		}
-		return NULL;
-	}
-	if ( ! SDL_timer_threaded ) {
-		SDL_SetError("Multiple timers require threaded events!");
 		return NULL;
 	}
 	SDL_mutexP(SDL_timer_mutex);
