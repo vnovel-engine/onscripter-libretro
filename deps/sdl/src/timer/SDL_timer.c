@@ -198,14 +198,17 @@ SDL_TimerID SDL_AddTimer(Uint32 interval, SDL_NewTimerCallback callback, void *p
 {
 #ifdef __LIBRETRO__
 	extern bool SDL_libretro_fastforward;
+	extern int SDL_libretro_ff_mult;
 	if (SDL_libretro_fastforward) {
-		/* Fast-forward: create a 1ms timer so it fires almost
-		 * immediately via the timer thread (asynchronously, avoiding
-		 * re-entrancy issues where the callback clears timer_id
-		 * before it's been assigned by the caller). */
+		/* Fast-forward: fire sooner so text/animation advance faster, but
+		 * scaled by the "Fast-Forward Speed" core option (2x..max) so the
+		 * selected speed is honoured instead of always running flat out.
+		 * The engine's own timer thread runs at 1ms, so a 0ms interval
+		 * (2x on a short wait) simply fires on the next tick. */
+		Uint32 iv = interval / (Uint32)SDL_libretro_ff_mult;
 		SDL_TimerID t;
 		SDL_mutexP(SDL_timer_mutex);
-		t = SDL_AddTimerInternal(1, callback, param);
+		t = SDL_AddTimerInternal(iv, callback, param);
 		SDL_mutexV(SDL_timer_mutex);
 		return t;
 	}

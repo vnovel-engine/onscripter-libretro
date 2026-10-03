@@ -100,6 +100,36 @@ void SDL_Delay (Uint32 ms)
 {
 #ifdef __LIBRETRO__
 	extern bool SDL_libretro_fastforward;
+	extern bool SDL_libretro_paused;
+	extern volatile unsigned long long SDL_libretro_frontend_hb;
+	/* Freeze the engine thread while the frontend is paused. Two signals:
+	 *  - SDL_libretro_paused: set from retro_run when the frontend reports
+	 *    audio/video disabled (belt-and-braces; RA usually just stops calling
+	 *    retro_run).
+	 *  - SDL_libretro_frontend_hb: monotonic ms of the last retro_run(). When
+	 *    the frontend menu opens, RA stops calling retro_run entirely, so this
+	 *    goes stale and we block here. Every engine loop (ONS/PONS eventLoop
+	 *    via SDL_WaitEvent -> SDL_Delay(10), the SDL timer thread that drives
+	 *    text/animation, animations) reaches SDL_Delay, so gating here freezes
+	 *    the whole engine from one place. `hb != 0` guards the start-up window
+	 *    before retro_run has ever run (avoid a boot deadlock). */
+	{
+		struct timespec hbt;
+		unsigned long long now, hb;
+		bool stale;
+		clock_gettime(CLOCK_MONOTONIC, &hbt);
+		now = (unsigned long long)hbt.tv_sec * 1000 + hbt.tv_nsec / 1000000;
+		hb  = SDL_libretro_frontend_hb;
+		stale = (hb != 0) && (now - hb > 250);
+		while (SDL_libretro_paused || stale) {
+			struct timespec ptv = { 0, 1000000 }; /* 1ms */
+			nanosleep(&ptv, NULL);
+			clock_gettime(CLOCK_MONOTONIC, &hbt);
+			now = (unsigned long long)hbt.tv_sec * 1000 + hbt.tv_nsec / 1000000;
+			hb  = SDL_libretro_frontend_hb;
+			stale = (hb != 0) && (now - hb > 250);
+		}
+	}
 	if (SDL_libretro_fastforward && ms > 1)
 		ms = 1;
 #endif
