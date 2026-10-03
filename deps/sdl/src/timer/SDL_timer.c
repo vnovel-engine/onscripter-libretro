@@ -196,23 +196,10 @@ static SDL_TimerID SDL_AddTimerInternal(Uint32 interval, SDL_NewTimerCallback ca
 
 SDL_TimerID SDL_AddTimer(Uint32 interval, SDL_NewTimerCallback callback, void *param)
 {
-#ifdef __LIBRETRO__
-	extern bool SDL_libretro_fastforward;
-	extern int SDL_libretro_ff_mult;
-	if (SDL_libretro_fastforward) {
-		/* Fast-forward: fire sooner so text/animation advance faster, but
-		 * scaled by the "Fast-Forward Speed" core option (2x..max) so the
-		 * selected speed is honoured instead of always running flat out.
-		 * The engine's own timer thread runs at 1ms, so a 0ms interval
-		 * (2x on a short wait) simply fires on the next tick. */
-		Uint32 iv = interval / (Uint32)SDL_libretro_ff_mult;
-		SDL_TimerID t;
-		SDL_mutexP(SDL_timer_mutex);
-		t = SDL_AddTimerInternal(iv, callback, param);
-		SDL_mutexV(SDL_timer_mutex);
-		return t;
-	}
-#endif
+	/* NOTE: no fast-forward interval scaling here. The single game clock
+	 * (SDL_GetTicks -> ons_libretro_game_clock_ms) already dilates time, so
+	 * timers fire sooner because their deadlines arrive sooner; dividing the
+	 * interval too would accelerate twice. */
 	SDL_TimerID t;
 	if ( ! SDL_timer_mutex ) {
 		SDL_timer_mutex = SDL_CreateMutex();

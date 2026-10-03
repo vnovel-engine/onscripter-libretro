@@ -20,6 +20,11 @@
     slouken@libsdl.org
 */
 #include "SDL_config.h"
+#if defined(__LIBRETRO__)
+/* Provided by the core's SDL shim (sdl-libretro/video.c): the single game
+ * clock, fast-forward dilation included. */
+long long ons_libretro_game_clock_ms(void);
+#endif
 #include <stdbool.h>
 
 #ifdef SDL_TIMER_UNIX
@@ -71,6 +76,12 @@ void SDL_StartTicks(void)
 
 Uint32 SDL_GetTicks (void)
 {
+#ifdef __LIBRETRO__
+	/* Single game clock owned by the core (fast-forward dilation included).
+	 * Do NOT also apply SDL_libretro_ff_offset here or acceleration would be
+	 * counted twice. */
+	return (Uint32)ons_libretro_game_clock_ms();
+#else
 #if HAVE_CLOCK_GETTIME
 	Uint32 ticks;
 	struct timespec now;
@@ -82,14 +93,8 @@ Uint32 SDL_GetTicks (void)
 	gettimeofday(&now, NULL);
 	ticks=(now.tv_sec-start.tv_sec)*1000+(now.tv_usec-start.tv_usec)/1000;
 #endif
-#ifdef __LIBRETRO__
-	extern Uint32 SDL_libretro_ff_offset;
-	/* Apply pre-computed fast-forward offset (accumulated once per
-	 * retro_run frame, not per SDL_GetTicks call). When FF stops,
-	 * offset freezes — deltas remain correct. */
-	ticks += SDL_libretro_ff_offset;
-#endif
 	return(ticks);
+#endif
 }
 
 #if defined(__MINGW32__)
