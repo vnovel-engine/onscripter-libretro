@@ -113,7 +113,18 @@ void SDL_ThreadedTimerCheck(void)
 	now = SDL_GetTicks();
 	for ( prev = NULL, t = SDL_timers; t; t = next ) {
 		removed = SDL_FALSE;
+#ifdef __LIBRETRO__
+		/* The libretro timer thread runs every 1ms (RunTimer: SDL_Delay(1)),
+		 * which is finer than the SDL_TIMESLICE (10ms) the stock check assumes
+		 * (it expects to be called once per timeslice, hence subtracting it).
+		 * Subtracting it here made short intervals fire ~immediately: a 10ms
+		 * interval gave ms = 10 - 10 = 0, so it fired on the next 1ms tick —
+		 * e.g. PONScripter's "defaultspeed 30,10,0" text ran ~10x too fast.
+		 * Use the full interval. */
+		ms = t->interval;
+#else
 		ms = t->interval - SDL_TIMESLICE;
+#endif
 		next = t->next;
 		if ( (int)(now - t->last_alarm) > (int)ms ) {
 			struct _SDL_TimerID timer;
