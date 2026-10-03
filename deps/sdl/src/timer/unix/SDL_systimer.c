@@ -114,6 +114,7 @@ void SDL_Delay (Uint32 ms)
 	 *    the whole engine from one place. `hb != 0` guards the start-up window
 	 *    before retro_run has ever run (avoid a boot deadlock). */
 	{
+		extern bool SDL_libretro_in_reset;
 		struct timespec hbt;
 		unsigned long long now, hb;
 		bool stale;
@@ -121,7 +122,11 @@ void SDL_Delay (Uint32 ms)
 		now = (unsigned long long)hbt.tv_sec * 1000 + hbt.tv_nsec / 1000000;
 		hb  = SDL_libretro_frontend_hb;
 		stale = (hb != 0) && (now - hb > 250);
-		while (SDL_libretro_paused || stale) {
+		/* A reset must be able to reach the engine even while paused: the
+		 * frontend stops calling retro_run() for the duration, so the heartbeat
+		 * goes stale and the pause gate would otherwise block here forever.
+		 * Ignore both signals while a reset is in progress. */
+		while (!SDL_libretro_in_reset && (SDL_libretro_paused || stale)) {
 			struct timespec ptv = { 0, 1000000 }; /* 1ms */
 			nanosleep(&ptv, NULL);
 			clock_gettime(CLOCK_MONOTONIC, &hbt);
